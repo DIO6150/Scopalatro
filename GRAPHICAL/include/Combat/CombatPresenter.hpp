@@ -30,16 +30,18 @@ private:
 
 	void OnCardDropInPlayArea(CardModel * actor) override;
 	void DebugDrawCard() override;
+	void Pause() override;
 
 	// Model events
 	
 	void OnMessage(std::string const message) override;
-	void OnCardsDrawnToHand(std::vector<Card *> cards) override;
+	void OnCardsDrawnToHand(std::vector<Card *> cards, bool enemy=false) override;
 	void OnCardsDrawnToTable(std::vector<Card *> cards) override;
-	void OnCardsDiscarded(std::vector<Card *> cards) override;
-	void OnCardsCaptured(std::vector<Card *> cards) override;
+	void OnCardsDiscarded(std::vector<Card *> cards, bool enemy=false) override;
+	void OnCardsCaptured(std::vector<Card *> cards, bool enemy=false) override;
 	void OnCardUpdate(Card * cards) override;
-	void OnCardPlacedOnTable(Card * card) override;
+	void OnCardResolving(Card * card, bool enemy=false) override;
+	void OnCardPlacedOnTable(Card * card, bool enemy=false) override;
 	void OnPlayerBeginTurn(int turnCount) override;
 	void OnPlayerHealthChange(int newHP, int newMaxHP) override;
 	void OnPlayerDeath() override;
@@ -68,4 +70,6 @@ private:
 
 	std::vector<std::function<TaskID()>> m_animationStack;
 	TaskID m_blockingAnimation = SentinelTask;
+
+	bool m_pause = false;
 };

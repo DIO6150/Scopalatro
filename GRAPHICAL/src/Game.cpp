@@ -55,6 +55,7 @@ CombatParams Game::GenerateCombatParameters()
 	CombatParams combatParams;
 	combatParams.playerHP    = m_playerHP;
 	combatParams.playerMaxHP = m_playerMaxHP;
+	combatParams.difficulty  = Difficulty::Elite;
 
 	for (auto & card : m_playerDeck.GetCards())
 	{
@@ -180,6 +181,7 @@ void Game::SetupShaders()
 	LoadShaderSource ("shader_source_fragment_healthbar", "data/assets/shaders/healthBar.fragment");
 	LoadShaderSource ("shader_source_fragment_glyph"    , "data/assets/shaders/glyph.fragment");
 	LoadShaderSource ("shader_source_fragment_box9patch", "data/assets/shaders/box9patch.fragment");
+	LoadShaderSource ("shader_source_fragment_enemy"    , "data/assets/shaders/enemy.fragment");
 }
 
 void Game::SetupMaterials()

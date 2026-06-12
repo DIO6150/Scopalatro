@@ -3,8 +3,11 @@
 #include <stdint.h>
 #include <MVPHelper.hpp>
 
-struct EntityMetaData
+enum class Difficulty
 {
-	int hp;
-	int maxHP;
+	Tutorial, // 0.0f
+	Easy, // 0.25f
+	Normal, // 0.50f
+	Hard, // 0.75f
+	Elite // 1.0f
 };

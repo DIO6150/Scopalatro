@@ -19,6 +19,7 @@ public:
 	float cardSize;
 	float width;
 	float beginX;
+	float beginY = 0.0f;
 
 	float hoverFactor = 2.0f;
 

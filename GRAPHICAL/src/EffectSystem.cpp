@@ -5,20 +5,17 @@
 
 void DamageEffect::apply(EffectContext& ctx) {
 	int finalAmount = amount;
-	if(ctx.entitySource) {
+	if(ctx.entitySource)
+	{
 		finalAmount = ctx.entitySource->calculateDamage(amount);
 	}
-    auto targets = ctx.getTargets(targetType);
-    for(auto* target : targets) {
-		if(target) {
-			ctx.observer->Damage(target, finalAmount, ctx.entitySource, false);
-			//target->takeDamage(finalAmount, ctx.source);
 
-			if(ctx.entitySource) {
-				for(auto& r : ctx.entitySource->getRelics()) {
-					r->onDamageDealt(*ctx.entitySource, *target, finalAmount);
-				}
-			}
+    auto targets = ctx.getTargets(targetType);
+
+    for(auto* target : targets) {
+		if(target)
+		{
+			ctx.observer->Damage(target, finalAmount, ctx.entitySource, false);
 		}
     }
 }
@@ -26,14 +23,21 @@ void DamageEffect::apply(EffectContext& ctx) {
 void HealEffect::apply(EffectContext& ctx) {
     auto targets = ctx.getTargets(targetType);
     for(auto* target : targets) {
-        if(target) target->heal(amount);
+        if(target)
+		{
+			ctx.observer->Heal(target, amount);
+		}
     }
 }
 
 void ApplyStatusEffect::apply(EffectContext& ctx) {
     auto targets = ctx.getTargets(targetType);
-    for(auto* target : targets) {
-        if(target) target->addStatus(statusName, duration, magnitude);
+    for(auto* target : targets)
+	{
+        if(target)
+		{
+			ctx.observer->AddStatus(target, statusName, duration, magnitude);
+		}
     }
 }
 
@@ -120,7 +124,7 @@ void DoubleDebuffsEffect::apply(EffectContext& ctx) {
 	for(auto* target : targets) {
 		if(target) {
 			std::cout << "Incurable Disease! Doubling debuffs on " << target->getName() << "!" << std::endl;
-			target->doubleDebuffs();
+			ctx.observer->DoubleDebuffs(target);
 		}
 	}
 }
@@ -132,11 +136,12 @@ void PoisonExplosionEffect::apply(EffectContext& ctx) {
 		if(target->hasStatus("Poisoned")) {
 			auto poison = target->getStatus("Poisoned");
 			int burstDmg = poison.magnitude * poison.duration;
-			std::cout << "Poison Explosion! " << poison.magnitude << " x " << poison.duration
-				<< " turns = " << burstDmg << " burst damage!" << std::endl;
-			target->takeDamage(burstDmg);
-			target->removeStatus("Poisoned");
-		} else {
+
+			ctx.observer->Damage(target, burstDmg, nullptr, true);
+			ctx.observer->RemoveStatus(target, "Poison");
+		}
+		else
+		{
 			std::cout << target->getName() << " has no Poison to detonate." << std::endl;
 		}
 	}

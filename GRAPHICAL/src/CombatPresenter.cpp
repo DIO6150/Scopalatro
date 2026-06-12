@@ -18,7 +18,7 @@ void CombatPresenter::Init()
 
 void CombatPresenter::Update()
 {
-	if (m_blockingAnimation == SentinelTask || !m_taskManager.IsTaskAlive(m_blockingAnimation))
+	if (!m_pause && (m_blockingAnimation == SentinelTask || !m_taskManager.IsTaskAlive(m_blockingAnimation)))
 	{
 		while (!m_animationStack.empty())
 		{
@@ -59,7 +59,7 @@ void CombatPresenter::Begin(CombatParams params)
 	}
 	
 	m_view->Init();
-	m_model->Init();
+	m_model->Init(params.difficulty);
 }
 
 void CombatPresenter::OnCardDropInPlayArea(CardModel * actor)
@@ -73,14 +73,28 @@ void CombatPresenter::DebugDrawCard()
 	m_model->DrawUntilHandFull();
 }
 
+void CombatPresenter::Pause()
+{
+	m_pause = !m_pause;
+}
+
 void CombatPresenter::OnMessage(std::string const message)
 {
 	Logger::log(LogLevel::Info, "[CombatModel]: {}", message);
 }
 
-void CombatPresenter::OnCardsDrawnToHand(std::vector<Card *> cards)
+void CombatPresenter::OnCardsDrawnToHand(std::vector<Card *> cards, bool enemy)
 {
-	m_animationStack.push_back(m_view->DrawCardsToHand(Convert(cards)));
+	if (!enemy)
+	{
+		m_animationStack.push_back(m_view->DisableUserInput());
+		m_animationStack.push_back(m_view->DrawCardsToHand(Convert(cards), false));
+		m_animationStack.push_back(m_view->EnableUserInput());
+	}
+	else
+	{
+		m_animationStack.push_back(m_view->DrawCardsToHand(Convert(cards), true));
+	}
 }
 
 void CombatPresenter::OnCardsDrawnToTable(std::vector<Card *> cards)
@@ -88,14 +102,14 @@ void CombatPresenter::OnCardsDrawnToTable(std::vector<Card *> cards)
 	m_animationStack.push_back(m_view->DrawCardsToTable(Convert(cards)));
 }
 
-void CombatPresenter::OnCardsDiscarded(std::vector<Card *> cards)
+void CombatPresenter::OnCardsDiscarded(std::vector<Card *> cards, bool enemy)
 {
-	m_animationStack.push_back(m_view->DiscardCards(Convert(cards)));
+	m_animationStack.push_back(m_view->DiscardCards(Convert(cards), enemy));
 }
 
-void CombatPresenter::OnCardsCaptured(std::vector<Card *> cards)
+void CombatPresenter::OnCardsCaptured(std::vector<Card *> cards, bool enemy)
 {
-	m_animationStack.push_back(m_view->CaptureCards(Convert(cards)));
+	m_animationStack.push_back(m_view->CaptureCards(Convert(cards), enemy));
 }
 
 void CombatPresenter::OnCardUpdate(Card * card)
@@ -104,10 +118,16 @@ void CombatPresenter::OnCardUpdate(Card * card)
 	if (actor) m_view->UpdateCard(actor, card);
 }
 
-void CombatPresenter::OnCardPlacedOnTable(Card * card)
+void CombatPresenter::OnCardResolving(Card * card, bool enemy)
 {
 	auto actor = Convert(card);
-	if (actor) m_animationStack.push_back(m_view->PlaceCardOnTable(actor));
+	if (actor) m_animationStack.push_back(m_view->ResolveCard(actor, enemy));
+}
+
+void CombatPresenter::OnCardPlacedOnTable(Card * card, bool enemy)
+{
+	auto actor = Convert(card);
+	if (actor) m_animationStack.push_back(m_view->PlaceCardOnTable(actor, enemy));
 }
 
 void CombatPresenter::OnPlayerBeginTurn(int turnCount)

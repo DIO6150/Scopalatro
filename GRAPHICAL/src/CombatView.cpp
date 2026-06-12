@@ -61,7 +61,13 @@ void CombatView::Init()
 	m_cardSize      = width / 12.8f;
 	m_hand.cardSize = m_cardSize;
 	m_hand.width    = 10 * m_cardSize;
-	m_hand.beginX   =(width - m_hand.width) / 2;
+	m_hand.beginX   = (width - m_hand.width) / 2;
+
+	m_enemyHand.cardSize = m_cardSize / 6.0;
+	m_enemyHand.width    = 10 * m_enemyHand.cardSize;
+	m_enemyHand.beginX   = (width - m_enemyHand.width) / 2;
+	m_enemyHand.beginY   = (height - m_enemyHand.cardSize - 70);
+
 
 	m_play.beginX  = m_hand.beginX;
 	m_play.beginY  = m_cardSize * 2.3;
@@ -94,6 +100,13 @@ void CombatView::Init()
 	);
 
 	m_turnDisplay->IsVisible(false);
+
+	m_enemy = std::make_unique<EnemyModel>(m_renderer);
+	float scaleX = m_enemy->GetScale().x;
+	float scaleY = m_enemy->GetScale().y;
+	m_enemy->SetPosition(glm::vec3 {width / 2.0f, height - (scaleY / 2.0f) - 30.0f, -2.0f});
+
+	m_inspector->RegisterRenderableObject(m_enemy.get());
 }
 
 
@@ -119,6 +132,9 @@ void CombatView::Update()
 
     if (InputManager::getInstance().isKeyPressed(GLFW_KEY_D))
         m_subscriber->DebugDrawCard();
+
+	if (InputManager::getInstance().isKeyPressed(GLFW_KEY_P))
+        m_subscriber->Pause();
 
     //--------------------------------------
     // Disable input
@@ -196,7 +212,7 @@ void CombatView::Update()
     {
 		m_cardDraggedCurrent = hoveredCard;
 		
-		if (m_table.GetIndex(m_cardDraggedCurrent) != static_cast<size_t>(-1))
+		if (m_hand.GetIndex(m_cardDraggedCurrent) == static_cast<size_t>(-1))
 			m_cardDraggedCurrent = nullptr;
 
         StartDraggingCard(m_cardDraggedCurrent);
@@ -259,45 +275,82 @@ void CombatView::Render()
 	m_enemyHealthbar->Render();
 
 	m_turnDisplay->Render();
+
+	m_enemy->Render();
 }
 
 // Warning: right now, it can't be spammed, otherwise it will have a ugly effect
-std::function<TaskID()> CombatView::DrawCardsToHand(std::vector<CardModel *> cards)
+std::function<TaskID()> CombatView::DrawCardsToHand(std::vector<CardModel *> cards, bool enemy)
 {
 	if(cards.empty())
 		return [] () { return SentinelTask; };
 
-
-	return [this, cards]()
+	if (!enemy)
 	{
-		std::map<CardModel *, size_t> handCopy; 
-		handCopy.insert(m_hand.begin(), m_hand.end());
-	
-		for(auto actor : cards)
+		return [this, cards]()
 		{
-			m_hand.AddCard(actor);
-		}
-	
-		// Rearange hand
-		for (auto & [actor, index] : handCopy)
+			std::map<CardModel *, size_t> handCopy; 
+			handCopy.insert(m_hand.begin(), m_hand.end());
+			
+			for(auto actor : cards)
+			{
+				m_hand.AddCard(actor);
+			}
+			
+			// Rearange hand
+			for (auto & [actor, index] : handCopy)
+			{
+				auto task = GenerateMoveCardTask(actor, m_hand.GetCardPos(actor), m_hand.GetCardSize(actor), 1.0f, easeInOutCirc);
+				m_taskQueue.PushCancel(reinterpret_cast<uint64_t>(actor), task);
+			}
+			
+			int index = 0;
+			double timeOffset = handCopy.empty() ? 0.05 : 0.0;
+			TaskID task;
+			for (auto & actor : cards)
+			{
+				actor->SetPosition({ -1000.0f, (m_context->GetViewport().height + m_cardSize) / 2.0f, 0.0f });
+				task = GenerateMoveCardTask(actor, m_hand.GetCardPos(actor), m_hand.GetCardSize(actor), 1.0f, easeInOutCirc);
+				m_taskQueue.PushCancel(reinterpret_cast<uint64_t>(actor), task, timeOffset + index * 0.25);
+				++index;
+			}
+			
+			return task;
+		};
+	}
+	else
+	{
+		return [this, cards]()
 		{
-			auto task = GenerateMoveCardTask(actor, m_hand.GetCardPos(actor), m_hand.GetCardSize(actor), 1.0f, easeInOutCirc);
-			m_taskQueue.PushCancel(reinterpret_cast<uint64_t>(actor), task);
-		}
-	
-		int index = 0;
-		double timeOffset = handCopy.empty() ? 0.05 : 0.0;
-		TaskID task;
-		for (auto & actor : cards)
-		{
-			actor->SetPosition({ -100 + index * m_cardSize, m_context->GetViewport().height + m_cardSize * 5, 0.0 });
-			task = GenerateMoveCardTask(actor, m_hand.GetCardPos(actor), m_hand.GetCardSize(actor), 1.0f, easeInOutCirc);
-			m_taskQueue.PushCancel(reinterpret_cast<uint64_t>(actor), task, timeOffset + index * 0.25);
-			++index;
-		}
-	
-		return task;
-	};
+			std::map<CardModel *, size_t> handCopy; 
+			handCopy.insert(m_enemyHand.begin(), m_enemyHand.end());
+			
+			for(auto actor : cards)
+			{
+				m_enemyHand.AddCard(actor);
+			}
+			
+			// Rearange hand
+			for (auto & [actor, index] : handCopy)
+			{
+				auto task = GenerateMoveCardTask(actor, m_enemyHand.GetCardPos(actor), m_enemyHand.GetCardSize(actor), 1.0f, easeInOutCirc);
+				m_taskQueue.PushCancel(reinterpret_cast<uint64_t>(actor), task);
+			}
+			
+			int index = 0;
+			double timeOffset = handCopy.empty() ? 0.05 : 0.0;
+			TaskID task;
+			for (auto & actor : cards)
+			{
+				actor->SetPosition({ -1000.0f, (m_context->GetViewport().height + m_cardSize) / 2.0f, 0.0f });
+				task = GenerateMoveCardTask(actor, m_enemyHand.GetCardPos(actor), m_enemyHand.GetCardSize(actor), 1.0f, easeInOutCirc);
+				m_taskQueue.PushCancel(reinterpret_cast<uint64_t>(actor), task, timeOffset + index * 0.25);
+				++index;
+			}
+			
+			return task;
+		};
+	}
 }
 
 std::function<TaskID()> CombatView::DrawCardsToTable(std::vector<CardModel *> cards)
@@ -317,7 +370,7 @@ std::function<TaskID()> CombatView::DrawCardsToTable(std::vector<CardModel *> ca
 	};
 }
 
-std::function<TaskID()> CombatView::DiscardCards(std::vector<CardModel *> cards)
+std::function<TaskID()> CombatView::DiscardCards(std::vector<CardModel *> cards, bool enemy)
 {
 	if(cards.empty())
 		return [] () { return SentinelTask; };
@@ -327,27 +380,52 @@ std::function<TaskID()> CombatView::DiscardCards(std::vector<CardModel *> cards)
 	return [] () { return SentinelTask; };
 }
 
-std::function<TaskID()> CombatView::CaptureCards(std::vector<CardModel *> cards)
+std::function<TaskID()> CombatView::CaptureCards(std::vector<CardModel *> cards, bool enemy)
 {
 	if(cards.empty())
 		return [] () { return SentinelTask; };
 
-	return [this, cards]()
+	auto vp = m_context->GetViewport();
+	glm::vec3 targetPosition {3000.0, vp.height / 2, 0.0};
+
+	if (!enemy)
 	{
-		TaskID lastTaskID;
-		size_t index = 0; // ideally we sort cards by distance to target so we get more of a fan effect
-		for(auto actor : cards)
+		return [this, cards, targetPosition]()
 		{
-			lastTaskID = GenerateMoveCardTask(actor, glm::vec3{200.0, 1000.0, 1.0}, glm::vec3{m_cardSize, m_cardSize, 1.0}, 3.0f, easeInOutCirc);
-			m_taskQueue.PushCancel(reinterpret_cast<uint64_t>(actor), lastTaskID, 0.5 * index);
-			index++;
+			TaskID lastTaskID;
+			size_t index = 0; // ideally we sort cards by distance to target so we get more of a fan effect
+			for(auto actor : cards)
+			{
+				lastTaskID = GenerateMoveCardTask(actor, targetPosition, glm::vec3{m_cardSize, m_cardSize, 1.0}, 3.0f, easeInOutCirc);
+				m_taskQueue.PushCancel(reinterpret_cast<uint64_t>(actor), lastTaskID, 0.5 * index);
+				index++;
+				
+				m_table.RemoveCard(actor); // remove the capture cards
+				m_hand.RemoveCard(actor);  // remove the capturing card
+			}
 			
-			m_table.RemoveCard(actor); // remove the capture cards
-			m_hand.RemoveCard(actor);  // remove the capturing card
-		}
-		
-		return RearangeTableCards();
-	};
+			return RearangeTableCards();
+		};
+	}
+	else
+	{
+		return [this, cards, targetPosition]()
+		{
+			TaskID lastTaskID;
+			size_t index = 0; // ideally we sort cards by distance to target so we get more of a fan effect
+			for(auto actor : cards)
+			{
+				lastTaskID = GenerateMoveCardTask(actor, targetPosition, glm::vec3{m_cardSize, m_cardSize, 1.0}, 3.0f, easeInOutCirc);
+				m_taskQueue.PushCancel(reinterpret_cast<uint64_t>(actor), lastTaskID, 0.5 * index);
+				index++;
+				
+				m_table.RemoveCard(actor); // remove the capture cards
+				m_enemyHand.RemoveCard(actor);  // remove the capturing card
+			}
+			
+			return RearangeTableCards();
+		};
+	}
 }
 
 std::function<TaskID()> CombatView::ExhaustCards(std::vector<CardModel *> cards)
@@ -360,18 +438,34 @@ std::function<TaskID()> CombatView::ExhaustCards(std::vector<CardModel *> cards)
 	return [] () { return SentinelTask; };
 }
 
-std::function<TaskID()> CombatView::PlaceCardOnTable(CardModel * actor)
+std::function<TaskID()> CombatView::PlaceCardOnTable(CardModel * actor, bool enemy)
 {
 	if(actor == nullptr)
 		return [] () { return SentinelTask; };
 
-	return [this, actor]()
+	if (!enemy)
 	{
-		m_hand.RemoveCard(actor);
-		m_table.AddCard(actor);
+		return [this, actor]()
+		{
+			m_hand.RemoveCard(actor);
+			m_table.AddCard(actor);
+		
+			return RearangeTableCards();
+		};
+	}
+	else
+	{
+		return [this, actor]()
+		{
+			m_enemyHand.RemoveCard(actor);
+			m_table.AddCard(actor);
+
+			RearangeHandCards(true);
+		
+			return RearangeTableCards();
+		};
+	}
 	
-		return RearangeTableCards();
-	};
 }
 
 std::function<TaskID()> CombatView::UpdatePlayerHealth(int targetHP, int targetMaxHP)
@@ -386,7 +480,7 @@ std::function<TaskID()> CombatView::UpdatePlayerHealth(int targetHP, int targetM
 		auto task = m_taskManager.RegisterTask(
 			[=, this] (TaskID ID, double progress, double deltaTime) mutable -> TaskResult
 			{
-				progress *= 0.5;
+				progress *= 1.5;
 				
 				float curve = easeInOutCirc(std::min(progress, 1.0));
 				
@@ -419,7 +513,7 @@ std::function<TaskID()> CombatView::UpdateEnemyHealth(int targetHP, int targetMa
 		auto task = m_taskManager.RegisterTask(
 			[=, this] (TaskID ID, double progress, double deltaTime) mutable -> TaskResult
 			{
-				progress *= 0.5;
+				progress *= 1.5;
 				
 				float curve = easeInOutCirc(std::min(progress, 1.0));
 				
@@ -444,7 +538,7 @@ std::function<TaskID()> CombatView::DisplayTurnNumber(int turnCount)
 {
 	return [this, turnCount]()
 	{
-		m_turnDisplay->SetText("{C:WHITE, S:BOLD}Beginning Turn " + std::to_string(turnCount), 44);
+		m_turnDisplay->SetText("{S:BOLD}Beginning Turn " + std::to_string(turnCount), 44);
 
 		float x = (m_context->GetViewport().width - m_turnDisplay->GetWidth()) / 2.0f;
 		float y = (m_context->GetViewport().height - m_turnDisplay->GetHeight()) / 2.0f;
@@ -506,7 +600,7 @@ std::function<TaskID()> CombatView::DisplayEnemyTurn()
 {
 	return [this]()
 	{
-		m_turnDisplay->SetText("{C:WHITE, S:BOLD}Enemy Turn ", 44);
+		m_turnDisplay->SetText("{S:BOLD}Enemy Turn ", 44);
 
 		float x = (m_context->GetViewport().width - m_turnDisplay->GetWidth()) / 2.0f;
 		float y = (m_context->GetViewport().height - m_turnDisplay->GetHeight()) / 2.0f;
@@ -579,6 +673,64 @@ std::function<TaskID()> CombatView::DisableUserInput()
 	{
 		m_canInput = false;
 		return SentinelTask;
+	};
+}
+
+std::function<TaskID()> CombatView::ResolveCard(CardModel * actor, bool enemy)
+{
+	return [this, actor, enemy]()
+	{
+		if (enemy) m_enemyHand.RemoveCard(actor);
+		else m_hand.RemoveCard(actor);
+
+		auto vp = m_context->GetViewport();
+		glm::vec3 targetPosition {(vp.width - m_cardSize) / 2.0, (vp.height - m_cardSize) / 2.0f, 1.999f};
+		glm::vec3 targetScale {m_cardSize * 1.5f, m_cardSize * 1.5f, 1.0};
+
+		glm::vec3 startingPosition = actor->GetPosition();
+		glm::vec3 startingScale    = actor->GetScale();
+
+		if (enemy)
+		{
+			targetPosition.y += m_cardSize;
+		}
+
+		if (enemy)
+		{
+			RearangeHandCards(true);
+		}
+
+		auto task = m_taskManager.RegisterTask(
+			[this, startingPosition, startingScale, targetPosition, targetScale, actor] (TaskID task, double progress, double deltaTime) -> TaskResult
+			{
+				progress *= 0.75;
+
+				if (progress < 0.45)
+				{
+					float localProgress = static_cast<float>(progress / 0.45);
+					float curve = easeInOutCirc(localProgress);
+
+					glm::vec3 currentPosition = glm::mix(startingPosition, targetPosition, curve);
+					glm::vec3 currentScale = glm::mix(startingScale, targetScale, curve);
+					actor->SetPosition(currentPosition);
+					actor->SetScale(currentScale);
+				}
+				else if (progress < 1.0)
+				{
+					actor->SetPosition(targetPosition);
+					actor->SetScale(targetScale);
+				}
+				else
+				{
+					return TaskResult::Return;
+				}
+
+				return TaskResult::Yield;
+			}
+		);
+
+		m_taskManager.StartTask(task); //.PushCancel(reinterpret_cast<uint64_t>(actor)
+		return task;
 	};
 }
 
@@ -799,20 +951,6 @@ void CombatView::DropCard(CardModel * actor, bool inPlayArea)
 	}
 	else
 	{
-		m_hand.SetResolve(actor);
-
-		auto vp = m_context->GetViewport();
-		m_taskQueue.PushCancel(
-			reinterpret_cast<uint64_t>(actor),
-			GenerateMoveCardTask(
-				actor, 
-				glm::vec3 {(vp.width - m_cardSize) / 2.0, (vp.height - m_cardSize) / 2.0f, 1.0f},
-				glm::vec3 {m_cardSize * 1.5f, m_cardSize * 1.5f, 1.0},
-				1.0f,
-				easeInOutCirc
-			)
-		);
-
 		m_subscriber->OnCardDropInPlayArea(actor);
 	}
 }
@@ -829,13 +967,25 @@ TaskID CombatView::RearangeTableCards()
 	return task;
 }
 
-TaskID CombatView::RearangeHandCards()
+TaskID CombatView::RearangeHandCards(bool enemy)
 {
 	TaskID task;
-	for (auto [actor, index] : m_hand)
+
+	if (!enemy)
 	{
-		task = GenerateMoveCardTask(actor, m_hand.GetCardPos(actor), m_hand.GetCardSize(actor), 5.0, easeInOutCirc);
-		m_taskQueue.PushCancel(reinterpret_cast<uint64_t>(actor), task);
+		for (auto [actor, index] : m_hand)
+		{
+			task = GenerateMoveCardTask(actor, m_hand.GetCardPos(actor), m_hand.GetCardSize(actor), 5.0, easeInOutCirc);
+			m_taskQueue.PushCancel(reinterpret_cast<uint64_t>(actor), task);
+		}
+	}
+	else
+	{
+		for (auto [actor, index] : m_enemyHand)
+		{
+			task = GenerateMoveCardTask(actor, m_enemyHand.GetCardPos(actor), m_enemyHand.GetCardSize(actor), 5.0, easeInOutCirc);
+			m_taskQueue.PushCancel(reinterpret_cast<uint64_t>(actor), task);
+		}
 	}
 
 	return task;

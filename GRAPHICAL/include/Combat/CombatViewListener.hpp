@@ -10,4 +10,5 @@ struct CombatViewListener
 	virtual void OnCardDropInPlayArea (CardModel * actor) = 0;
 
 	virtual void DebugDrawCard () = 0;
+	virtual void Pause () = 0;
 };

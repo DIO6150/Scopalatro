@@ -25,7 +25,7 @@ public:
 	void RegisterEnemyCard(Card * card);
 
 
-	void Init();
+	void Init(Difficulty difficulty);
 
 
 	void BeginPlayerTurn();
@@ -45,6 +45,7 @@ public:
 	
 	
 	void Damage(Entity * dst, uint32_t calculatedDamage, Entity * source, bool isEcho);
+	void Heal(Entity * dst, uint32_t amount);
 	void ChangeCardSuit(Card * card, Suit suit);
 	void ChangeCardValue(Card * card, CardValue value);
 	
@@ -54,6 +55,11 @@ public:
 	std::string GetCardName(Card * card);
 	std::vector<Card *> * GetPlayerCapturePile() { return &m_playerPiles.capturePile; }
 	std::vector<Card *> * GetTable() { return &m_table; }
+
+	void UpdateStatuses(Entity * entity);
+	void AddStatus(Entity * target, std::string status, int duration, int magnitude);
+	void RemoveStatus(Entity * target, std::string status);
+	void DoubleDebuffs(Entity * target);
 		
 private:
 	CombatModelListener * m_listener;

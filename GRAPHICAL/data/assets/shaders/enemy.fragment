@@ -1,0 +1,37 @@
+#version 460 core
+
+struct Quad
+{
+	vec2 pos;
+	vec2 scale;
+	float z;
+};
+
+struct Material
+{
+	Quad texture;
+};
+
+layout(std430, binding = 2) readonly buffer Materials {
+	Material materials[];
+};
+
+in vec2 vTexCoords;
+in flat int vMaterialIndex;
+
+out vec4 fragColor;
+
+uniform sampler2DArray uAtlas;
+
+vec4 getRGBA(Quad quad)
+{
+	vec2 texCoords = vTexCoords * quad.scale + quad.pos;
+	return texture(uAtlas, vec3 (texCoords, 0.0));
+}
+
+void main()
+{
+	Material mat = materials[vMaterialIndex];
+
+	fragColor = getRGBA(mat.texture);
+}
