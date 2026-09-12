@@ -21,8 +21,11 @@ using namespace TLOT;
 
 int main()
 {
-	size_t width = 1280;
-	size_t height = 800;
+	size_t width  = 1920;
+	size_t height = 1080;
+	//size_t width  = 1200;
+	//size_t height = 900;
+
 
 	RenderContext ctx;
 	ctx.Init (width, height, "Scopalatro");

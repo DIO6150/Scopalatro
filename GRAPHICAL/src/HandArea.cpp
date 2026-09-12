@@ -39,68 +39,83 @@ size_t HandArea::GetHandSize ()
 
 glm::vec3 HandArea::GetCardPos (CardModel * card)
 {
-	if (m_hand.find (card) == m_hand.end ()) return glm::vec3 {-1000.0f};
+	if (m_hand.find(card) == m_hand.end())
+        return glm::vec3{-1000.0f};
 
-	size_t index = m_hand[card];
+    size_t index = m_hand[card];
 
-	float handSize = (float)GetHandSize ();
+    float handSize = (float)GetHandSize();
 
-	if (m_draggedCard || m_resolvingCard)
-	{
-		size_t draggedCardIndex;
-		
-		if (m_draggedCard)
-			draggedCardIndex = m_hand.at (m_draggedCard);
-		else
-			draggedCardIndex = m_hand.at (m_resolvingCard);
+    if (m_draggedCard || m_resolvingCard)
+    {
+        size_t draggedCardIndex =
+            m_draggedCard ?
+            m_hand.at(m_draggedCard) :
+            m_hand.at(m_resolvingCard);
 
-		handSize -= 1.0f;
-	
-		if (index < draggedCardIndex)
-		{
-			//index += 1;
-		}
-		else if (index > draggedCardIndex)
-		{
-			index -= 1;
-		}
-		else
-		{
-			return card->GetPosition();
-		}
-	}
+        handSize -= 1.0f;
 
-	float transformedIndex = (float)index - (handSize / 2.0f);
+        if (index > draggedCardIndex)
+            index--;
+        else if (index == draggedCardIndex)
+            return card->GetPosition();
+    }
 
-	float paddingX = -handSize * handSize + 95.0f;
+    //--------------------------------------
+    // Layout
+    //--------------------------------------
 
-	float x = beginX + (width / 2) + (paddingX / 2) + transformedIndex * (cardSize + paddingX) + cardSize / 2;
-	float y = cardSize / 3;
-	float z = index * 0.1f;
+    float spacing = cardSize;
 
-	if (m_hoveredCard && !m_draggedCard && !m_resolvingCard)
-	{
-		auto hoveredCardIndex = m_hand.at (m_hoveredCard);
-	
-		float offsetX = std::abs (cardSize / (2.0f * hoverFactor) - paddingX) * hoverFactor;
+    if (handSize > 1.0f)
+    {
+        float availableWidth = width - cardSize;
 
-		if (index < hoveredCardIndex)
-		{
-			x -= offsetX; // TODO: correct the logic here
-		}
-		else if (index > hoveredCardIndex)
-		{
-			x += offsetX + cardSize / 2;
-		}
-		else
-		{
-			y = cardSize + (GetCardSize (card).y / 2.0);
-			x += GetCardSize (card).x / (4.0f * hoverFactor);
-		}
-	}
+        spacing = availableWidth / (handSize - 1.0f);
 
+        // Empêche les cartes de trop s'écarter
+        spacing = std::min(spacing, cardSize * 1.1f);
 
-	return glm::vec3 {x, y, z};
+        // Autorise le chevauchement quand la main grossit
+        spacing = std::max(spacing, cardSize * 0.25f);
+    }
+
+    float totalWidth = cardSize;
+
+    if (handSize > 1.0f)
+        totalWidth += (handSize - 1.0f) * spacing;
+
+    float startX = beginX + (width - totalWidth) * 0.5f;
+
+    float x = startX + index * spacing + cardSize * 0.5f;
+    float y = beginY + cardSize / 3.0f;
+    float z = index * 0.1f;
+
+    //--------------------------------------
+    // Hover
+    //--------------------------------------
+
+    if (m_hoveredCard && !m_draggedCard && !m_resolvingCard)
+    {
+        auto hoveredCardIndex = m_hand.at(m_hoveredCard);
+
+        float offsetX = cardSize * hoverFactor * 0.5f;
+
+        if (index < hoveredCardIndex)
+        {
+            x -= offsetX;
+        }
+        else if (index > hoveredCardIndex)
+        {
+            x += offsetX;
+        }
+        else
+        {
+            y = cardSize + GetCardSize(card).y * 0.5f;
+        }
+    }
+
+    return glm::vec3{x, y, z};
 }
 
 glm::vec3 HandArea::GetCardSize (CardModel * card)

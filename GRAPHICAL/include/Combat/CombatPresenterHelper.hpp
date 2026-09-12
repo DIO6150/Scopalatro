@@ -16,6 +16,8 @@ struct EnnemyParam
 
 struct CombatParams
 {
+	Difficulty difficulty = Difficulty::Easy;
+
 	uint32_t playerHP;
 	uint32_t playerMaxHP;
 

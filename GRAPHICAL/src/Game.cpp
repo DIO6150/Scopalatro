@@ -55,6 +55,7 @@ CombatParams Game::GenerateCombatParameters()
 	CombatParams combatParams;
 	combatParams.playerHP    = m_playerHP;
 	combatParams.playerMaxHP = m_playerMaxHP;
+	combatParams.difficulty  = Difficulty::Easy;
 
 	for (auto & card : m_playerDeck.GetCards())
 	{
@@ -170,6 +171,10 @@ void Game::SetupTextures()
 	LoadTexture("texture_box_side"  , "data/assets/textures/ui_box_side.png");
 	LoadTexture("texture_box_center", "data/assets/textures/ui_box_center.png");
 
+	LoadTexture("texture_status_poison", "data/assets/textures/status_poison.png");
+	LoadTexture("texture_status_burn", "data/assets/textures/status_burn.png");
+	LoadTexture("texture_status_bleed", "data/assets/textures/status_bleed.png");
+
 	
 }
 
@@ -180,6 +185,8 @@ void Game::SetupShaders()
 	LoadShaderSource ("shader_source_fragment_healthbar", "data/assets/shaders/healthBar.fragment");
 	LoadShaderSource ("shader_source_fragment_glyph"    , "data/assets/shaders/glyph.fragment");
 	LoadShaderSource ("shader_source_fragment_box9patch", "data/assets/shaders/box9patch.fragment");
+	LoadShaderSource ("shader_source_fragment_enemy"    , "data/assets/shaders/enemy.fragment");
+	LoadShaderSource ("shader_source_fragment_icon"     , "data/assets/shaders/icon.fragment");
 }
 
 void Game::SetupMaterials()
@@ -226,6 +233,12 @@ void Game::SetupMaterials()
 			{"texture", TexQ},
 		})
 	);
+
+	AssetManager::Cache("material_icon",
+		AssetManager::CreateMaterialTemplate({
+			{"texture", TexQ}
+		})
+	);
 }
 
 void Game::SetupTechniques()
@@ -254,6 +267,11 @@ void Game::SetupTechniques()
 	ID64_t enemyProgram = m_renderer->CreateProgram(
 		AssetManager::Cache("shader_source_vertex_common"),
 		AssetManager::Cache("shader_source_fragment_enemy")
+	);
+
+	ID64_t iconProgram = m_renderer->CreateProgram(
+		AssetManager::Cache("shader_source_vertex_common"),
+		AssetManager::Cache("shader_source_fragment_icon")
 	);
 
 	Technique cardTechnique;
@@ -286,6 +304,12 @@ void Game::SetupTechniques()
 	enemyTechnique.program  = enemyProgram;
 	enemyTechnique.material = AssetManager::Cache("material_enemy");
 	m_renderer->RegisterTechnique(enemyTechnique, 25.0f);
+
+	Technique iconTechnique;
+	iconTechnique.mode     = ProjectionMode::Orthographic;
+	iconTechnique.program  = iconProgram;
+	iconTechnique.material = AssetManager::Cache("material_icon");
+	m_renderer->RegisterTechnique(iconTechnique, 99.0f);
 }
 
 void Game::SetupFonts()

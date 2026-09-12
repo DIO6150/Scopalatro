@@ -11,6 +11,7 @@
 #include <Debugger/SceneInspector.hpp>
 #include <Renderer/Camera.hpp>
 #include <Renderer/Renderer.hpp>
+
 #include <Combat/CombatHelper.hpp>
 #include <Combat/CombatViewHelper.hpp>
 #include <Combat/CombatViewListener.hpp>
@@ -25,6 +26,7 @@
 #include <RenderableObjects/CardModel.hpp>
 #include <RenderableObjects/HealthbarModel.hpp>
 #include <RenderableObjects/ToolTipModel.hpp>
+#include <RenderableObjects/EnemyModel.hpp>
 
 
 class Card;
@@ -52,18 +54,19 @@ public:
 	void Update();
 	void Render();
 
-	std::function<TaskID()> DrawCardsToHand(std::vector<CardModel *> cards);
+	std::function<TaskID()> DrawCardsToHand(std::vector<CardModel *> cards, bool enemy);
 	std::function<TaskID()> DrawCardsToTable(std::vector<CardModel *> cards);
-	std::function<TaskID()> DiscardCards(std::vector<CardModel *> cards);
-	std::function<TaskID()> CaptureCards(std::vector<CardModel *> cards);
+	std::function<TaskID()> DiscardCards(std::vector<CardModel *> cards, bool enemy);
+	std::function<TaskID()> CaptureCards(std::vector<CardModel *> cards, bool enemy);
 	std::function<TaskID()> ExhaustCards(std::vector<CardModel *> cards);
-	std::function<TaskID()> PlaceCardOnTable(CardModel * card);
+	std::function<TaskID()> PlaceCardOnTable(CardModel * card, bool enemy);
 	std::function<TaskID()> UpdatePlayerHealth(int hp, int maxhp);
 	std::function<TaskID()> UpdateEnemyHealth(int hp, int maxhp);
 	std::function<TaskID()> DisplayTurnNumber(int turnCount);
 	std::function<TaskID()> DisplayEnemyTurn();
 	std::function<TaskID()> EnableUserInput();
 	std::function<TaskID()> DisableUserInput();
+	std::function<TaskID()> ResolveCard(CardModel * actor, bool enemy);
 
 
 
@@ -85,7 +88,7 @@ private:
 	void DropCard(CardModel * actor, bool shouldPlay);
 
 	TaskID RearangeTableCards();
-	TaskID RearangeHandCards();
+	TaskID RearangeHandCards(bool enemy);
 
 	// Pointers
 
@@ -108,15 +111,12 @@ private:
 	float m_cardSize = 200.0f;
 	float m_handBeginX = 200.0f;
 
-	float m_primaryEnemyX;
-	float m_primaryEnemyY;
-	float m_primaryEnemyZ;
-	float m_enemyScale;
-
 	HandArea  m_hand;
 	TableArea m_table;
 	PlayArea  m_play;
 
+	HandArea  m_enemyHand;
+	
 	// Models
 	std::set<std::unique_ptr<CardModel>> m_cards;
 
@@ -125,13 +125,7 @@ private:
 	
 	std::unique_ptr<TLOT::TextObject> m_turnDisplay;
 
-	struct UnavailabiltyCounter
-	{
-		int counter = 0;
-	};
-
-	std::map<CardModel *, UnavailabiltyCounter> m_unavailableCards;
-
+	std::unique_ptr<EnemyModel> m_enemy;
 
 	// Events
 	TaskManager & m_taskManager;
