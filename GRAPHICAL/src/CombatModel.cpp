@@ -30,7 +30,7 @@ void CombatModel::RegisterEnemyCard(Card * card)
 void CombatModel::Init(Difficulty difficulty)
 {
 	m_player = std::make_unique<Entity>("player", 50);
-	m_enemy  = std::make_unique<Enemy>("Badalisk", 30, 0.5f);
+	m_enemy  = std::make_unique<Enemy>("Badalisk", 20, 0.5f);
 
 	m_listener->OnPlayerHealthChange(m_player->getHp(), m_player->getMaxHp());
 	m_listener->OnEnemyHealthChange(m_enemy->getHp(), m_enemy->getMaxHp());
@@ -65,6 +65,9 @@ void CombatModel::BeginPlayerTurn()
 	turn++;
 	m_listener->OnPlayerBeginTurn(turn);
 
+	UpdateStatuses(m_player.get());
+	UpdateEntitiesState();
+
 	// update statuses
 
 	if (turn == 1)
@@ -76,9 +79,6 @@ void CombatModel::BeginPlayerTurn()
 
 void CombatModel::PlayCard(Card * card)
 {
-	UpdateStatuses(m_player.get());
-	UpdateEntitiesState();
-
 	if (!m_registeredCards.contains(card))
 		return;
 
@@ -173,10 +173,11 @@ void CombatModel::UpdateEntitiesState()
 
 void CombatModel::BeginEnemyTurn()
 {
+	m_listener->OnEnemyBeginTurn();
+
 	UpdateStatuses(m_enemy.get());
 	UpdateEntitiesState();
 
-	m_listener->OnEnemyBeginTurn();
 
 	if (turn == 1)
 	{

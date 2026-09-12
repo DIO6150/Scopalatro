@@ -5,7 +5,6 @@
 #include <string>
 #include <set>
 
-#include <Combat/CharacterState.hpp>
 #include <Combat/CombatHelper.hpp>
 #include <Combat/CombatModelHelper.hpp>
 #include <Combat/CombatModelListener.hpp>

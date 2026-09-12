@@ -107,6 +107,9 @@ void CombatView::Init()
 	m_enemy->SetPosition(glm::vec3 {width / 2.0f, height - (scaleY / 2.0f) - 30.0f, -2.0f});
 
 	m_inspector->RegisterRenderableObject(m_enemy.get());
+
+	m_inspector->RegisterRenderableObject(m_playerHealthbar.get());
+	m_inspector->RegisterRenderableObject(m_enemyHealthbar.get());
 }
 
 

@@ -1,7 +1,7 @@
 
 CXX      := g++
 CXXFLAGS := -std=c++23 -Wall -Wextra -Wno-unused-parameter -Ideps/TLOT/deps -Ideps/TLOT/deps/glad/include -Ideps/TLOT/include -Iinclude  -Ideps/TLOT/deps/imgui -Ideps/TLOT/deps/imgui/backends -Ideps/TLOT/deps/freeType/include
-CXXFLAGS += -O0 -g
+CXXFLAGS += -O3
 
 LDFLAGS := 
 
